@@ -1,0 +1,53 @@
+#This is provinces plots will add steps later
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Colour scheme (no Artificial-waterbody and no Natural)
+landcover_colors <- c(
+  "Built-up" = "black",
+  "Plantation" = "purple",
+  "Cropland" = "brown",
+  "Secondary-natural" = "orange",
+  "Mine" = "red"
+)
+
+# Convert wide to long & remove Natural and Artificial-waterbody
+prov_long <- prov_sum %>%
+  pivot_longer(
+    cols = -PROVINCE,
+    names_to = "LandCover",
+    values_to = "km2"
+  ) %>%
+  filter(!LandCover %in% c("Natural", "Artificial-waterbody"))
+
+# Calculate percentages
+prov_perc <- prov_long %>%
+  group_by(PROVINCE) %>%
+  mutate(perc = (km2 / sum(km2)) * 100) %>%
+  ungroup()
+
+# Loop and display plots
+unique_provinces <- unique(prov_perc$PROVINCE)
+
+for (prov in unique_provinces) {
+  
+  p <- prov_perc %>%
+    filter(PROVINCE == prov) %>%
+    arrange(desc(perc)) %>%
+    ggplot(aes(x = perc, y = reorder(LandCover, perc), fill = LandCover)) +
+    geom_col() +
+    scale_fill_manual(values = landcover_colors) +
+    labs(
+      title = paste("Percentage cover of pressures in", prov),
+      x = "Cover (%)",
+      y = NULL
+    ) +
+    theme_minimal(base_size = 12) +
+    theme(
+      panel.grid = element_blank(),
+      legend.position = "none"
+    )
+  
+  print(p)
+}
